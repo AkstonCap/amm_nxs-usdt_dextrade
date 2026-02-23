@@ -1,9 +1,9 @@
 {
-  "name": "amm_module",
-  "displayName": "AMM",
-  "version": "0.1.0",
+  "name": "amm_nxs_usdt_dextrade",
+  "displayName": "NXS/USDT AMM",
+  "version": "1.0.0",
   "targetWalletVersion": "3.1.5",
-  "description": "AMM module",
+  "description": "AMM control dashboard for the NXS/USDT market pair on dex-trade.com. Automates market-making with Constant Product, Grid, and Spread Maker strategies.",
   "type": "app",
   "entry": "dist/index.html",
   "icon": "dist/distordia-logo.svg",

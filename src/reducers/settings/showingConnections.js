@@ -1,16 +1,2 @@
-import * as TYPE from 'actions/types';
-
-const initialState = false;
-
-export default (state = initialState, action) => {
-  switch (action.type) {
-    case TYPE.SHOW_CONNECTIONS:
-      return true;
-
-    case TYPE.HIDE_CONNECTIONS:
-      return false;
-
-    default:
-      return state;
-  }
-};
+// Kept for backward-compat with existing storage data; not actively used.
+export default (state = false) => state;
