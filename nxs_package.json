@@ -1,0 +1,25 @@
+{
+  "name": "dex_module",
+  "displayName": "DEX",
+  "version": "0.4.2",
+  "targetWalletVersion": "3.1.5",
+  "description": "DEX module",
+  "type": "app",
+  "entry": "dist/index.html",
+  "icon": "dist/distordia-logo.svg",
+  "files": [
+    "dist/index.html", 
+    "dist/react.svg", 
+    "dist/js/app.js", 
+    "dist/syncing.svg",
+    "dist/distordia-large.svg",
+    "dist/distordia-small.svg",
+    "dist/distordia-logo.svg",
+    "dist/trash1.svg",
+    "dist/icons/delete2.svg",
+    "dist/delete-simple.svg"
+],
+  "author": {
+    "name": "AkstonCap"
+  }
+}
