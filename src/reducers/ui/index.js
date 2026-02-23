@@ -1,7 +1,7 @@
 import { combineReducers } from 'redux';
 
-import inputValue from './inputValue';
+import botStatus from './botStatus';
 
 export default combineReducers({
-  inputValue,
+  botStatus,
 });
