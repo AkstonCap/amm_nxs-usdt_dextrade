@@ -1,7 +1,7 @@
 {
-  "name": "_dev_dex_module",
-  "displayName": "DEX dev",
-  "description": "DEX module dev",
+  "name": "_dev_amm_module",
+  "displayName": "AMM dev",
+  "description": "AMM module dev",
   "type": "app",
   "entry": "http://localhost:24011/dev.html",
   "icon": "dist/distordia-logo.svg"

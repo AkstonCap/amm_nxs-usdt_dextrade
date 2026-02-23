@@ -1,7 +1,7 @@
 {
-  "name": "dex_module",
-  "version": "0.4.2",
-  "description": "DEX module",
+  "name": "amm_module",
+  "version": "0.1.0",
+  "description": "AMM module",
   "devDependencies": {
     "@babel/core": "^7.24.9",
     "@babel/plugin-proposal-optional-chaining": "^7.21.0",
@@ -25,10 +25,6 @@
     "dev": "cross-env NODE_ENV=development webpack serve --config webpack-dev.config.babel.js"
   },
   "dependencies": {
-    "@solana/spl-token": "^0.4.13",
-    "@solana/web3.js": "^1.98.4",
-    "highcharts": "^10.3.3",
-    "lightweight-charts": "^3.8.0",
     "nexus-module": "^1.0.0",
     "react-redux": "8.1.2",
     "redux": "4.1.2",
