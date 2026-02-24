@@ -11,6 +11,7 @@ import SettingsPanel from './components/SettingsPanel';
 
 import {
   setBotStatus,
+  setMarketData,
   setOrders,
   setBalances,
   setPnl,
@@ -91,6 +92,7 @@ export default function Main() {
     try {
       const data = await botFetch(botUrl, '/api/status');
       dispatch(setBotStatus(data));
+      dispatch(setMarketData(data.market || {}));
       dispatch(setOrders(data.managedOrders || {}));
       dispatch(setBalances(data.balances || {}));
       dispatch(setPnl(data.pnl || {}));
@@ -162,9 +164,15 @@ export default function Main() {
   }
 
   async function handleTestConnection(url) {
-    const res = await fetch(`${url}/api/health`, { timeout: 5000 });
-    const json = await res.json();
-    return json;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    try {
+      const res = await fetch(`${url}/api/health`, { signal: controller.signal });
+      const json = await res.json();
+      return json;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
