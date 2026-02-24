@@ -7,9 +7,10 @@ const spreadMaker     = require('./spreadMaker');
 const strategies = { constantProduct, grid, spreadMaker };
 
 function getStrategy(name) {
-  const s = strategies[name];
-  if (!s) throw new Error(`Unknown strategy: ${name}`);
-  return s;
+  if (!Object.prototype.hasOwnProperty.call(strategies, name)) {
+    throw new Error(`Unknown strategy: ${name}`);
+  }
+  return strategies[name];
 }
 
 function listStrategies() {

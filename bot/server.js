@@ -6,12 +6,34 @@ const logger  = require('./logger');
 const { getSnapshot, state } = require('./state');
 const { listStrategies } = require('./strategies');
 
+// ─── Input validation helpers ─────────────────────────────────────────────
+function validateStrategyName(name) {
+  if (name !== undefined && (typeof name !== 'string' || name.length > 64)) {
+    throw new Error('Invalid strategy name');
+  }
+}
+
+function validateStrategyParams(params) {
+  if (params === undefined || params === null) return;
+  if (typeof params !== 'object' || Array.isArray(params)) {
+    throw new Error('strategyParams must be a plain object');
+  }
+  for (const [key, val] of Object.entries(params)) {
+    if (typeof key !== 'string' || key.length > 64) {
+      throw new Error(`Invalid param key: ${key}`);
+    }
+    if (typeof val !== 'number' || !isFinite(val)) {
+      throw new Error(`Param "${key}" must be a finite number`);
+    }
+  }
+}
+
 module.exports = function createServer(botController) {
   const app = express();
 
   // Allow the Nexus module webview to reach us (any origin from localhost)
   app.use(cors({ origin: '*' }));
-  app.use(express.json());
+  app.use(express.json({ limit: '16kb' }));
 
   // ─── GET /api/status ───────────────────────────────────────────────────
   // Returns the complete bot state snapshot
@@ -36,6 +58,8 @@ module.exports = function createServer(botController) {
   app.post('/api/start', async (req, res) => {
     const { strategyName, strategyParams } = req.body || {};
     try {
+      validateStrategyName(strategyName);
+      validateStrategyParams(strategyParams);
       await botController.start(strategyName, strategyParams);
       res.json({ ok: true, message: 'Bot started' });
     } catch (e) {
@@ -61,6 +85,8 @@ module.exports = function createServer(botController) {
   app.post('/api/config', async (req, res) => {
     const { strategyName, strategyParams } = req.body || {};
     try {
+      validateStrategyName(strategyName);
+      validateStrategyParams(strategyParams);
       await botController.updateConfig(strategyName, strategyParams);
       res.json({ ok: true, message: 'Config updated' });
     } catch (e) {
