@@ -8,6 +8,8 @@ const initialState = {
   tickCount:     0,
   lastTickAt:    null,
   lastMidPrice:  null,
+  strategyName:  null,
+  strategyParams: {},
   market: {
     bid:       null,
     ask:       null,
@@ -18,7 +20,7 @@ const initialState = {
   },
   orders:   {},
   balances: { NXS: { available: null, total: null }, USDT: { available: null, total: null } },
-  pnl:      { realizedPnlUsdt: 0, totalBuyVolume: 0, totalSellVolume: 0 },
+  pnl:      { realizedPnlUsdt: 0, totalBuyVolume: 0, totalSellVolume: 0, totalBuyCost: 0, totalSellRevenue: 0 },
   strategies:   [],
   logs:         [],
   pollingError: null,
@@ -31,14 +33,16 @@ export default (state = initialState, action) => {
       const s = action.payload;
       return {
         ...state,
-        status:       s.status,
-        errorMessage: s.errorMessage,
-        startedAt:    s.startedAt,
-        stoppedAt:    s.stoppedAt,
-        tickCount:    s.tickCount,
-        lastTickAt:   s.lastTickAt,
-        lastMidPrice: s.lastMidPrice,
-        pollingError: null,
+        status:         s.status,
+        errorMessage:   s.errorMessage,
+        startedAt:      s.startedAt,
+        stoppedAt:      s.stoppedAt,
+        tickCount:      s.tickCount,
+        lastTickAt:     s.lastTickAt,
+        lastMidPrice:   s.lastMidPrice,
+        strategyName:   s.strategyName   ?? state.strategyName,
+        strategyParams: s.strategyParams ?? state.strategyParams,
+        pollingError:   null,
       };
     }
     case TYPE.SET_MARKET_DATA:

@@ -22,6 +22,7 @@ const api = new DexTradeClient(LOGIN_TOKEN, SECRET);
 let tickTimer  = null;
 let running    = false;
 let forceRebal = false;
+let tickInProgress = false;
 
 // ─── Market data fetch ────────────────────────────────────────────────────────
 async function fetchMarket() {
@@ -89,10 +90,30 @@ async function reconcileOrders() {
         state.pnl.totalSellVolume  += order.volume;
         state.pnl.totalSellRevenue += order.volume * order.price;
       }
-      state.pnl.realizedPnlUsdt =
-        state.pnl.totalSellRevenue - state.pnl.totalBuyCost *
-        (state.pnl.totalSellVolume / (state.pnl.totalBuyVolume || 1));
+      // Realized PnL = sell revenue − weighted cost basis for the sold volume
+      const avgBuyCost =
+        state.pnl.totalBuyCost * (state.pnl.totalSellVolume / (state.pnl.totalBuyVolume || 1));
+      state.pnl.realizedPnlUsdt = state.pnl.totalSellRevenue - avgBuyCost;
     }
+  }
+
+  pruneClosedOrders();
+}
+
+// ─── Prune stale orders ──────────────────────────────────────────────────────
+const MAX_CLOSED_ORDERS = 200;
+
+function pruneClosedOrders() {
+  const closed = Object.entries(state.managedOrders)
+    .filter(([, o]) => o.status !== 'open')
+    .sort((a, b) => (a[1].placedAt || '').localeCompare(b[1].placedAt || ''));
+
+  if (closed.length > MAX_CLOSED_ORDERS) {
+    const toRemove = closed.slice(0, closed.length - MAX_CLOSED_ORDERS);
+    for (const [id] of toRemove) {
+      delete state.managedOrders[id];
+    }
+    logger.debug(`Pruned ${toRemove.length} stale orders`);
   }
 }
 
@@ -114,10 +135,30 @@ async function rebalance(midPrice) {
     }
   }
 
+  // Refresh balances after cancellations so limits are up-to-date
+  await fetchBalances();
+  let availNxs  = state.balances.NXS?.available  || 0;
+  let availUsdt = state.balances.USDT?.available || 0;
+
   // Place new orders
   let placed = 0;
   for (const order of targetOrders) {
     if (!running) break;
+
+    // Check available balance
+    if (order.side === 'buy') {
+      const cost = order.price * order.volume;
+      if (cost > availUsdt) {
+        logger.warn(`Skipping BUY ${order.volume.toFixed(4)} NXS — need ${cost.toFixed(4)} USDT, have ${availUsdt.toFixed(4)}`);
+        continue;
+      }
+    } else {
+      if (order.volume > availNxs) {
+        logger.warn(`Skipping SELL ${order.volume.toFixed(4)} NXS — have ${availNxs.toFixed(4)}`);
+        continue;
+      }
+    }
+
     try {
       const result = await api.createLimitOrder(order.side, order.price, order.volume);
       const id = String(result.id || result.order_id || result.orderId);
@@ -129,6 +170,10 @@ async function rebalance(midPrice) {
         status:   'open',
         placedAt: new Date().toISOString(),
       };
+      // Reserve placed balance locally to avoid over-committing
+      if (order.side === 'buy') availUsdt -= order.price * order.volume;
+      else availNxs -= order.volume;
+
       logger.info(
         `Placed ${order.side.toUpperCase()} ${order.volume.toFixed(4)} NXS ` +
         `@ ${order.price.toFixed(8)} USDT [#${id}]`
@@ -146,12 +191,15 @@ async function rebalance(midPrice) {
 // ─── Main tick ────────────────────────────────────────────────────────────────
 async function tick() {
   if (!running) return;
+  if (tickInProgress) { logger.debug('Tick skipped — previous tick still running'); return; }
+  tickInProgress = true;
+
   state.tickCount++;
   state.lastTickAt = new Date().toISOString();
 
   try {
     const midPrice = await fetchMarket();
-    if (!midPrice) { logger.warn('No mid price available, skipping tick'); return; }
+    if (!midPrice || midPrice <= 0) { logger.warn('No valid mid price available, skipping tick'); return; }
 
     await reconcileOrders();
     await fetchBalances();
@@ -171,6 +219,8 @@ async function tick() {
     logger.error(`Tick error: ${e.message}`);
     state.status = 'error';
     state.errorMessage = e.message;
+  } finally {
+    tickInProgress = false;
   }
 }
 
@@ -250,5 +300,17 @@ server.on('error', (e) => {
   process.exit(1);
 });
 
-process.on('SIGINT',  () => { logger.info('SIGINT received, shutting down…'); process.exit(0); });
-process.on('SIGTERM', () => { logger.info('SIGTERM received, shutting down…'); process.exit(0); });
+async function gracefulShutdown(signal) {
+  logger.info(`${signal} received, shutting down…`);
+  if (running) {
+    try {
+      await botController.stop(true);
+    } catch (e) {
+      logger.error(`Shutdown error: ${e.message}`);
+    }
+  }
+  process.exit(0);
+}
+
+process.on('SIGINT',  () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
