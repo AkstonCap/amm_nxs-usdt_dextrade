@@ -49,20 +49,29 @@ const state = {
 };
 
 function getSnapshot() {
+  // Deep-copy nested objects to prevent callers from mutating live state
+  const orders = {};
+  for (const [id, o] of Object.entries(state.managedOrders)) {
+    orders[id] = { ...o };
+  }
+
   return {
-    status:        state.status,
-    errorMessage:  state.errorMessage,
-    startedAt:     state.startedAt,
-    stoppedAt:     state.stoppedAt,
-    tickCount:     state.tickCount,
-    lastTickAt:    state.lastTickAt,
-    strategyName:  state.strategyName,
-    strategyParams: state.strategyParams,
-    lastMidPrice:  state.lastMidPrice,
-    market:        { ...state.market },
-    managedOrders: { ...state.managedOrders },
-    pnl:           { ...state.pnl },
-    balances:      { ...state.balances },
+    status:         state.status,
+    errorMessage:   state.errorMessage,
+    startedAt:      state.startedAt,
+    stoppedAt:      state.stoppedAt,
+    tickCount:      state.tickCount,
+    lastTickAt:     state.lastTickAt,
+    strategyName:   state.strategyName,
+    strategyParams: { ...state.strategyParams },
+    lastMidPrice:   state.lastMidPrice,
+    market:         { ...state.market },
+    managedOrders:  orders,
+    pnl:            { ...state.pnl },
+    balances: {
+      NXS:  { ...state.balances.NXS },
+      USDT: { ...state.balances.USDT },
+    },
   };
 }
 

@@ -216,3 +216,12 @@ All endpoints return `{ ok: boolean, data?, error?, message? }`.
 - **Balance validation**: before placing each order, the bot checks available balance and skips orders that would exceed it, logging a warning.
 - **Graceful shutdown**: SIGINT/SIGTERM cancel all open managed orders before exiting.
 - **Order pruning**: closed orders are pruned to a cap of 200 to prevent unbounded memory growth.
+
+---
+
+## Known limitations
+
+- **Partial fills assumed as full fills.** When an order leaves the open orders list, the bot records the entire order volume as filled. dex-trade does not expose fill amounts during normal polling, so PnL is approximate.
+- **Weighted-average cost PnL.** Realized PnL uses `sellRevenue - (totalBuyCost * sellVolume / buyVolume)`. New buys recalculate the cost basis retroactively (not FIFO).
+- **No retry within a tick.** A single network error or 5xx from dex-trade fails the tick. Recovery happens on the next tick (15 s later).
+- **Rate limiter is not atomic.** Concurrent async calls can both pass the check before either updates the timestamp. Safe in practice (tick loop is sequential) but a `/api/stop` during a tick could briefly exceed limits.

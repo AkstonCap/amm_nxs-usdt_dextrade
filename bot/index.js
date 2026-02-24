@@ -199,7 +199,7 @@ async function tick() {
 
   try {
     const midPrice = await fetchMarket();
-    if (!midPrice) { logger.warn('No mid price available, skipping tick'); return; }
+    if (!midPrice || midPrice <= 0) { logger.warn('No valid mid price available, skipping tick'); return; }
 
     await reconcileOrders();
     await fetchBalances();
