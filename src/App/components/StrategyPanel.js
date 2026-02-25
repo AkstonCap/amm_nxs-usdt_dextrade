@@ -27,6 +27,62 @@ const Label = styled.label({
   fontWeight: 500,
 });
 
+const LabelRow = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 8,
+});
+
+const InfoWrapper = styled.div({
+  position: 'relative',
+  display: 'inline-flex',
+  alignItems: 'center',
+  '&:hover > div': {
+    display: 'block',
+  },
+});
+
+const InfoIcon = styled.button({
+  width: 18,
+  height: 18,
+  minWidth: 18,
+  borderRadius: '50%',
+  border: '1px solid rgba(120,170,255,0.5)',
+  background: 'transparent',
+  color: '#7899c7',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: 11,
+  fontWeight: 700,
+  cursor: 'default',
+  padding: 0,
+  '&:hover': {
+    background: 'rgba(100,160,255,0.2)',
+    color: '#9fc5ff',
+  },
+});
+
+const InfoPanel = styled.div({
+  display: 'none',
+  position: 'absolute',
+  top: 'calc(100% + 4px)',
+  right: 0,
+  zIndex: 20,
+  width: 230,
+  padding: '8px 10px',
+  borderRadius: 6,
+  border: '1px solid rgba(120,170,255,0.3)',
+  background: 'rgba(20,30,50,0.97)',
+  boxShadow: '0 4px 14px rgba(0,0,0,0.5)',
+  color: '#ffffff',
+  fontSize: 11,
+  lineHeight: 1.5,
+  pointerEvents: 'none',
+});
+
+
 const StrategySelect = styled.div({
   display: 'flex',
   gap: 8,
@@ -56,7 +112,7 @@ export default function StrategyPanel({ strategies, botStatus, onStart, onStop, 
   const [starting, setStarting] = useState(false);
   const [stopping, setStopping] = useState(false);
 
-  const isRunning = botStatus.status === 'running' || botStatus.status === 'paused';
+  const isRunning = botStatus.status !== 'stopped' && botStatus.status != null;
   const currentStrategy = strategies.find((s) => s.name === strategyName);
 
   function handleStrategySelect(strat) {
@@ -112,7 +168,20 @@ export default function StrategyPanel({ strategies, botStatus, onStart, onStop, 
           <Grid>
             {Object.entries(currentStrategy.paramSchema).map(([key, schema]) => (
               <ParamRow key={key}>
-                <Label htmlFor={`param-${key}`}>{schema.label}</Label>
+                <LabelRow>
+                  <Label htmlFor={`param-${key}`}>{schema.label}</Label>
+                  <InfoWrapper>
+                    <InfoIcon
+                      type="button"
+                      aria-label={`More info about ${schema.label}`}
+                    >
+                      i
+                    </InfoIcon>
+                    <InfoPanel>
+                      {schema.description || schema.label}
+                    </InfoPanel>
+                  </InfoWrapper>
+                </LabelRow>
                 <TextField
                   id={`param-${key}`}
                   type="number"
@@ -145,10 +214,19 @@ export default function StrategyPanel({ strategies, botStatus, onStart, onStop, 
       <ActionRow>
         {isRunning ? (
           <>
-            <Button skin="default" onClick={onForceRebalance} style={{ fontSize: 12 }}>
+            <Button
+              skin="default"
+              onClick={onForceRebalance}
+              style={{ fontSize: 12, background: 'rgba(80,100,140,0.4)', color: '#c8d8f0', border: '1px solid rgba(120,160,255,0.4)' }}
+            >
               Force Rebalance
             </Button>
-            <Button skin="error" onClick={handleStop} disabled={stopping}>
+            <Button
+              skin="error"
+              onClick={handleStop}
+              disabled={stopping}
+              style={{ background: 'rgba(180,40,40,0.75)', color: '#fff', border: '1px solid rgba(255,80,80,0.5)' }}
+            >
               {stopping ? 'Stopping…' : 'Stop Bot'}
             </Button>
           </>

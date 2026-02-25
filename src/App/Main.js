@@ -8,6 +8,7 @@ import StrategyPanel from './components/StrategyPanel';
 import OrdersPanel   from './components/OrdersPanel';
 import LogPanel      from './components/LogPanel';
 import SettingsPanel from './components/SettingsPanel';
+import BalancesPanel from './components/BalancesPanel';
 
 import {
   setBotStatus,
@@ -198,13 +199,13 @@ export default function Main() {
 
       {/* Tab navigation */}
       <TabBar>
-        {['strategy', 'orders', 'log', 'settings'].map((tab) => (
+        {['strategy', 'orders', 'balances', 'log', 'settings'].map((tab) => (
           <Tab
             key={tab}
             active={activeTab === tab ? 1 : 0}
             onClick={() => dispatch(setActiveTab(tab))}
           >
-            {{ strategy: 'Strategy', orders: 'Orders', log: 'Log', settings: 'Settings' }[tab]}
+            {{ strategy: 'Strategy', orders: 'Orders', balances: 'Balances', log: 'Log', settings: 'Settings' }[tab]}
             {tab === 'orders' && Object.values(orders).filter((o) => o.status === 'open').length > 0 && (
               <span style={{ marginLeft: 6, fontSize: 10, background: 'rgba(100,181,246,0.2)', padding: '1px 5px', borderRadius: 10 }}>
                 {Object.values(orders).filter((o) => o.status === 'open').length}
@@ -227,6 +228,10 @@ export default function Main() {
 
       {activeTab === 'orders' && (
         <OrdersPanel orders={orders} balances={balances} />
+      )}
+
+      {activeTab === 'balances' && (
+        <BalancesPanel balances={balances} />
       )}
 
       {activeTab === 'log' && (

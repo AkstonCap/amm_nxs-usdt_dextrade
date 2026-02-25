@@ -6,12 +6,12 @@
   "description": "AMM control dashboard for the NXS/USDT market pair on dex-trade.com. Automates market-making with Constant Product, Grid, and Spread Maker strategies.",
   "type": "app",
   "entry": "dist/index.html",
-  "icon": "dist/distordia-logo.svg",
+  "icon": "dist/amm-nxs-usdt-logo.svg",
   "files": [
     "dist/index.html", 
     "dist/react.svg", 
     "dist/js/app.js", 
-    "dist/distordia-logo.svg"
+    "dist/amm-nxs-usdt-logo.svg"
 ],
   "author": {
     "name": "AkstonCap"
