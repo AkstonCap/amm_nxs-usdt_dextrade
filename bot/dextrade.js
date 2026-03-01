@@ -31,11 +31,28 @@ class DexTradeClient {
     this.secret = secret;
   }
 
+  /**
+   * Dex-trade signature: sort keys alphabetically (recursive),
+   * concatenate all values into a string, append secret, SHA256.
+   */
   _sign(body) {
-    return crypto
-      .createHmac('sha256', this.secret)
-      .update(JSON.stringify(body))
-      .digest('hex');
+    const values = this._extractValues(body);
+    const payload = values.join('') + this.secret;
+    return crypto.createHash('sha256').update(payload).digest('hex');
+  }
+
+  _extractValues(obj) {
+    const values = [];
+    const keys = Object.keys(obj).sort();
+    for (const key of keys) {
+      const val = obj[key];
+      if (val !== null && typeof val === 'object' && !Array.isArray(val)) {
+        values.push(...this._extractValues(val));
+      } else {
+        values.push(String(val));
+      }
+    }
+    return values;
   }
 
   async _publicGet(path, params = {}) {
@@ -88,7 +105,10 @@ class DexTradeClient {
   // ─── Private endpoints ───────────────────────────────────────────────────
 
   async getBalances() {
-    const data = await this._privatePost('/balances', {});
+    const body = {
+      request_id: String(Date.now()),
+    };
+    const data = await this._privatePost('/balances', body);
     return data.data || data;
   }
 
@@ -101,11 +121,11 @@ class DexTradeClient {
   async createLimitOrder(side, price, volume) {
     const body = {
       pair:       PAIR,
-      type_trade: side === 'buy' ? 0 : 1,
-      type:       2, // 2 = limit order
+      type:       side === 'buy' ? 0 : 1,  // 0 = Buy, 1 = Sell
+      type_trade: 0,                         // 0 = Limit order
       rate:       price.toFixed(8),
       volume:     volume.toFixed(4),
-      request:    Math.floor(Date.now() / 1000),
+      request_id: String(Date.now()),
     };
     logger.debug(`createLimitOrder: ${JSON.stringify(body)}`);
     const data = await this._privatePost('/create-order', body);
@@ -118,8 +138,8 @@ class DexTradeClient {
    */
   async cancelOrder(orderId) {
     const body = {
-      id: orderId,
-      request: Math.floor(Date.now() / 1000),
+      order_id: String(orderId),
+      request_id: String(Date.now()),
     };
     logger.debug(`cancelOrder: ${orderId}`);
     const data = await this._privatePost('/delete-order', body);
@@ -131,8 +151,7 @@ class DexTradeClient {
    */
   async getOpenOrders() {
     const body = {
-      pair:    PAIR,
-      request: Math.floor(Date.now() / 1000),
+      request_id: String(Date.now()),
     };
     const data = await this._privatePost('/orders', body);
     return data.data || data;
@@ -143,12 +162,12 @@ class DexTradeClient {
    */
   async getOrderHistory(page = 1, limit = 50) {
     const body = {
-      pair:    PAIR,
+      pair:       PAIR,
       page,
       limit,
-      request: Math.floor(Date.now() / 1000),
+      request_id: String(Date.now()),
     };
-    const data = await this._privatePost('/order-history', body);
+    const data = await this._privatePost('/history', body);
     return data.data || data;
   }
 

@@ -41,20 +41,15 @@ async function fetchMarket() {
 async function fetchBalances() {
   try {
     const balances = await api.getBalances();
-    // dex-trade returns an array or object of currencies
-    const normalize = (entry) => ({
-      available: parseFloat(entry.available || entry.balance || 0),
-      total:     parseFloat(entry.total     || entry.balance || 0),
-    });
-
-    if (Array.isArray(balances)) {
-      for (const b of balances) {
-        const curr = (b.currency || b.coin || '').toUpperCase();
-        if (curr === 'NXS' || curr === 'USDT') state.balances[curr] = normalize(b);
-      }
-    } else {
-      if (balances.NXS)  state.balances.NXS  = normalize(balances.NXS);
-      if (balances.USDT) state.balances.USDT = normalize(balances.USDT);
+    // dex-trade returns { list: [ { balances: { total, available }, currency: { iso3 } }, ... ] }
+    const list = Array.isArray(balances) ? balances : (balances.list || []);
+    for (const entry of list) {
+      const iso = (entry.currency?.iso3 || entry.currency || entry.coin || '').toUpperCase();
+      if (iso !== 'NXS' && iso !== 'USDT') continue;
+      state.balances[iso] = {
+        available: parseFloat(entry.balances?.available ?? entry.balance_available ?? entry.available ?? 0),
+        total:     parseFloat(entry.balances?.total     ?? entry.balance          ?? entry.total     ?? 0),
+      };
     }
   } catch (e) {
     logger.warn(`Balance fetch failed: ${e.message}`);
