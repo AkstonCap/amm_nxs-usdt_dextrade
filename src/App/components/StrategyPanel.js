@@ -7,6 +7,7 @@ import {
   setStrategyParam,
   resetStrategyParams,
 } from 'actions/actionCreators';
+import OrderPreview from './OrderPreview';
 
 const Grid = styled.div({
   display: 'grid',
@@ -104,7 +105,7 @@ const ActionRow = styled.div({
   justifyContent: 'flex-end',
 });
 
-export default function StrategyPanel({ strategies, botStatus, onStart, onStop, onForceRebalance }) {
+export default function StrategyPanel({ strategies, botStatus, market, balances, onStart, onStop, onForceRebalance }) {
   const dispatch = useDispatch();
   const ammConfig = useSelector((s) => s.settings.ammConfig);
   const { strategyName, strategyParams } = ammConfig;
@@ -207,6 +208,14 @@ export default function StrategyPanel({ strategies, botStatus, onStart, onStop, 
               </Button>
             </div>
           )}
+
+          {/* Live order preview */}
+          <OrderPreview
+            strategyName={strategyName}
+            strategyParams={{ ...currentStrategy.defaultParams, ...strategyParams }}
+            market={market}
+            balances={balances}
+          />
         </>
       )}
 

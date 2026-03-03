@@ -27,11 +27,22 @@ let tickInProgress = false;
 // ─── Market data fetch ────────────────────────────────────────────────────────
 async function fetchMarket() {
   const ticker = await api.getTicker();
-  const bid    = parseFloat(ticker.buy  || ticker.bid  || ticker.high_bid) || null;
-  const ask    = parseFloat(ticker.sell || ticker.ask  || ticker.low_ask)  || null;
-  const last   = parseFloat(ticker.last || ticker.price)                    || null;
-  const vol    = parseFloat(ticker.volume || ticker.vol24)                  || null;
-  const mid    = bid && ask ? (bid + ask) / 2 : last;
+  const last   = parseFloat(ticker.last || ticker.price)                        || null;
+  const vol    = parseFloat(ticker.volume_24H || ticker.volume || ticker.vol24) || null;
+
+  // Ticker doesn't include bid/ask — fetch from order book
+  let bid = null, ask = null;
+  try {
+    const book = await api.getOrderBook();
+    const bids = book.buy  || book.bids || [];
+    const asks = book.sell || book.asks || [];
+    if (bids.length > 0) bid = parseFloat(bids[0].rate || bids[0].price) || null;
+    if (asks.length > 0) ask = parseFloat(asks[0].rate || asks[0].price) || null;
+  } catch (e) {
+    logger.warn(`Order book fetch failed: ${e.message}`);
+  }
+
+  const mid = bid && ask ? (bid + ask) / 2 : last;
 
   state.market = { bid, ask, mid, last, volume24h: vol, updatedAt: new Date().toISOString() };
   return mid;
@@ -116,6 +127,8 @@ function pruneClosedOrders() {
 async function rebalance(midPrice) {
   const strategy = getStrategy(state.strategyName);
   const targetOrders = strategy.computeTargetOrders(midPrice, state.strategyParams);
+  logger.debug(`Target orders from strategy: ${JSON.stringify(targetOrders)}`);
+  logger.debug(`Balances: NXS=${JSON.stringify(state.balances.NXS)}, USDT=${JSON.stringify(state.balances.USDT)}`);
 
   // Cancel all currently open managed orders
   const openIds = Object.entries(state.managedOrders)
@@ -136,13 +149,22 @@ async function rebalance(midPrice) {
   let availUsdt = state.balances.USDT?.available || 0;
 
   // Place new orders
+  const MIN_ORDER_VALUE_USDT = 5; // dex-trade minimum order value
   let placed = 0;
   for (const order of targetOrders) {
     if (!running) break;
 
+    const orderValue = order.price * order.volume;
+
+    // Check dex-trade minimum order value
+    if (orderValue < MIN_ORDER_VALUE_USDT) {
+      logger.warn(`Skipping ${order.side.toUpperCase()} ${order.volume.toFixed(4)} NXS @ ${order.price.toFixed(8)} — value ${orderValue.toFixed(4)} USDT < ${MIN_ORDER_VALUE_USDT} USDT minimum`);
+      continue;
+    }
+
     // Check available balance
     if (order.side === 'buy') {
-      const cost = order.price * order.volume;
+      const cost = orderValue;
       if (cost > availUsdt) {
         logger.warn(`Skipping BUY ${order.volume.toFixed(4)} NXS — need ${cost.toFixed(4)} USDT, have ${availUsdt.toFixed(4)}`);
         continue;

@@ -69,15 +69,22 @@ class DexTradeClient {
     await rateLimit(true);
     const url = `${PRIVATE_BASE}${path}`;
     const sign = this._sign(body);
-    const resp = await axios.post(url, body, {
-      headers: {
-        'content-type': 'application/json',
-        'login-token': this.loginToken,
-        'x-auth-sign': sign,
-      },
-      timeout: 10000,
-    });
-    return resp.data;
+    try {
+      const resp = await axios.post(url, body, {
+        headers: {
+          'content-type': 'application/json',
+          'login-token': this.loginToken,
+          'x-auth-sign': sign,
+        },
+        timeout: 10000,
+      });
+      return resp.data;
+    } catch (err) {
+      if (err.response) {
+        logger.debug(`API ${path} error ${err.response.status}: ${JSON.stringify(err.response.data)}`);
+      }
+      throw err;
+    }
   }
 
   // ─── Public endpoints ────────────────────────────────────────────────────

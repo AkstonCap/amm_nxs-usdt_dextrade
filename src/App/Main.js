@@ -126,6 +126,7 @@ export default function Main() {
     pollerRef.current = setInterval(() => {
       pollStatus();
       pollLogs();
+      fetchStrategies();
     }, POLL_INTERVAL);
 
     return () => clearInterval(pollerRef.current);
@@ -220,6 +221,8 @@ export default function Main() {
         <StrategyPanel
           strategies={strategies}
           botStatus={botStatus}
+          market={market}
+          balances={balances}
           onStart={handleStart}
           onStop={handleStop}
           onForceRebalance={handleForceRebalance}
