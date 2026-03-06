@@ -64,7 +64,11 @@ export default (state = initialState, action) => {
       return { ...state, logs: action.payload };
 
     case TYPE.SET_POLLING_ERROR:
-      return { ...state, pollingError: action.payload };
+      return {
+        ...state,
+        pollingError: action.payload,
+        status: action.payload ? 'stopped' : state.status,
+      };
 
     case TYPE.SET_ACTIVE_TAB:
       return { ...state, activeTab: action.payload };

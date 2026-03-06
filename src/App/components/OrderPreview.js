@@ -3,6 +3,10 @@ import styled from '@emotion/styled';
 
 const MIN_ORDER_VALUE_USDT = 5;
 
+function roundOrderPrice(price) {
+  return Number(price.toFixed(4));
+}
+
 // ─── Strategy simulators (mirror bot logic) ──────────────────────────────────
 
 function simulateConstantProduct(midPrice, params) {
@@ -30,14 +34,14 @@ function simulateConstantProduct(midPrice, params) {
     const priceHigh = i === 0 ? midPrice : buyLevels[i - 1];
     const priceLow = buyLevels[i];
     const volume = Math.sqrt(k / priceLow) - Math.sqrt(k / priceHigh);
-    orders.push({ side: 'buy', price: priceLow, volume, skippedMinSize: volume < minSize });
+    orders.push({ side: 'buy', price: roundOrderPrice(priceLow), volume, skippedMinSize: volume < minSize });
   }
 
   for (let i = 0; i < sellLevels.length; i++) {
     const priceLow = i === 0 ? midPrice : sellLevels[i - 1];
     const priceHigh = sellLevels[i];
     const volume = Math.sqrt(k / priceLow) - Math.sqrt(k / priceHigh);
-    orders.push({ side: 'sell', price: priceHigh, volume, skippedMinSize: volume < minSize });
+    orders.push({ side: 'sell', price: roundOrderPrice(priceHigh), volume, skippedMinSize: volume < minSize });
   }
 
   return orders;
@@ -64,9 +68,9 @@ function simulateGrid(midPrice, params) {
   const orders = [];
   for (const level of levels) {
     if (level < midPrice) {
-      orders.push({ side: 'buy', price: level, volume: orderSize, skippedMinSize: false });
+      orders.push({ side: 'buy', price: roundOrderPrice(level), volume: orderSize, skippedMinSize: false });
     } else if (level > midPrice) {
-      orders.push({ side: 'sell', price: level, volume: orderSize, skippedMinSize: false });
+      orders.push({ side: 'sell', price: roundOrderPrice(level), volume: orderSize, skippedMinSize: false });
     }
   }
   return orders;
@@ -82,8 +86,8 @@ function simulateSpreadMaker(midPrice, params) {
   for (let tier = 1; tier <= maxTiers; tier++) {
     const tierSpread = spreadPct * Math.pow(tierMult, tier - 1);
     const half = tierSpread / 100 / 2;
-    orders.push({ side: 'buy', price: midPrice * (1 - half), volume: orderSize, skippedMinSize: false });
-    orders.push({ side: 'sell', price: midPrice * (1 + half), volume: orderSize, skippedMinSize: false });
+    orders.push({ side: 'buy', price: roundOrderPrice(midPrice * (1 - half)), volume: orderSize, skippedMinSize: false });
+    orders.push({ side: 'sell', price: roundOrderPrice(midPrice * (1 + half)), volume: orderSize, skippedMinSize: false });
   }
   return orders;
 }
@@ -259,7 +263,7 @@ export default function OrderPreview({ strategyName, strategyParams, market, bal
                     <td style={{ color: o.side === 'buy' ? '#4caf50' : '#f44336', fontWeight: 600 }}>
                       {o.side.toUpperCase()}
                     </td>
-                    <td>{o.price.toFixed(8)}</td>
+                    <td>{o.price.toFixed(4)}</td>
                     <td>{o.volume.toFixed(4)}</td>
                     <td style={{ color: belowMin ? '#ff9800' : '#ccc' }}>
                       {value.toFixed(4)}

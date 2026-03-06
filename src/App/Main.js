@@ -153,6 +153,7 @@ export default function Main() {
       });
       await pollStatus();
     } catch (e) {
+      dispatch(setPollingError(e.message));
       showErrorDialog({ message: 'Failed to stop bot', note: e.message });
     }
   }

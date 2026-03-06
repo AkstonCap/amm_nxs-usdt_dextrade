@@ -14,15 +14,38 @@ const PORT         = parseInt(process.env.BOT_PORT, 10) || 17442;
 const LOGIN_TOKEN  = process.env.DEXTRADE_LOGIN_TOKEN || '';
 const SECRET       = process.env.DEXTRADE_SECRET || '';
 const TICK_INTERVAL_MS = 15_000; // poll + rebalance every 15 s
+const PRICE_DECIMALS = 4;
+const IDLE_PREFETCH_INTERVAL_MS = 15_000;
+
+function roundOrderPrice(price) {
+  return Number(price.toFixed(PRICE_DECIMALS));
+}
 
 // ─── API client ───────────────────────────────────────────────────────────────
 const api = new DexTradeClient(LOGIN_TOKEN, SECRET);
 
 // ─── Tick control ─────────────────────────────────────────────────────────────
 let tickTimer  = null;
+let idlePrefetchTimer = null;
 let running    = false;
 let forceRebal = false;
 let tickInProgress = false;
+
+async function prefetchSnapshotWhenStopped() {
+  if (running || tickInProgress) return;
+
+  try {
+    await fetchMarket();
+  } catch (e) {
+    logger.warn(`Idle market fetch failed: ${e.message}`);
+  }
+
+  try {
+    await fetchBalances();
+  } catch (e) {
+    logger.warn(`Idle balance fetch failed: ${e.message}`);
+  }
+}
 
 // ─── Market data fetch ────────────────────────────────────────────────────────
 async function fetchMarket() {
@@ -86,7 +109,7 @@ async function reconcileOrders() {
     if (order.status === 'open' && !exchangeIds.has(id)) {
       state.managedOrders[id] = { ...order, status: 'filled' };
       const sideLabel = order.side === 'buy' ? 'BUY' : 'SELL';
-      logger.info(`Order filled: ${sideLabel} ${order.volume.toFixed(4)} NXS @ ${order.price.toFixed(8)} USDT [#${id}]`);
+      logger.info(`Order filled: ${sideLabel} ${order.volume.toFixed(4)} NXS @ ${order.price.toFixed(4)} USDT [#${id}]`);
 
       // Track PnL
       if (order.side === 'buy') {
@@ -154,11 +177,17 @@ async function rebalance(midPrice) {
   for (const order of targetOrders) {
     if (!running) break;
 
-    const orderValue = order.price * order.volume;
+    const price = roundOrderPrice(order.price);
+    if (!Number.isFinite(price) || price <= 0) {
+      logger.warn(`Skipping ${order.side.toUpperCase()} order with invalid rounded price: ${order.price}`);
+      continue;
+    }
+
+    const orderValue = price * order.volume;
 
     // Check dex-trade minimum order value
     if (orderValue < MIN_ORDER_VALUE_USDT) {
-      logger.warn(`Skipping ${order.side.toUpperCase()} ${order.volume.toFixed(4)} NXS @ ${order.price.toFixed(8)} — value ${orderValue.toFixed(4)} USDT < ${MIN_ORDER_VALUE_USDT} USDT minimum`);
+      logger.warn(`Skipping ${order.side.toUpperCase()} ${order.volume.toFixed(4)} NXS @ ${price.toFixed(4)} — value ${orderValue.toFixed(4)} USDT < ${MIN_ORDER_VALUE_USDT} USDT minimum`);
       continue;
     }
 
@@ -177,23 +206,23 @@ async function rebalance(midPrice) {
     }
 
     try {
-      const result = await api.createLimitOrder(order.side, order.price, order.volume);
+      const result = await api.createLimitOrder(order.side, price, order.volume);
       const id = String(result.id || result.order_id || result.orderId);
       state.managedOrders[id] = {
         id,
         side:     order.side,
-        price:    order.price,
+        price,
         volume:   order.volume,
         status:   'open',
         placedAt: new Date().toISOString(),
       };
       // Reserve placed balance locally to avoid over-committing
-      if (order.side === 'buy') availUsdt -= order.price * order.volume;
+      if (order.side === 'buy') availUsdt -= price * order.volume;
       else availNxs -= order.volume;
 
       logger.info(
         `Placed ${order.side.toUpperCase()} ${order.volume.toFixed(4)} NXS ` +
-        `@ ${order.price.toFixed(8)} USDT [#${id}]`
+        `@ ${price.toFixed(4)} USDT [#${id}]`
       );
       placed++;
     } catch (e) {
@@ -310,6 +339,12 @@ server.listen(PORT, '127.0.0.1', () => {
   logger.info(`AMM Bot server listening on http://127.0.0.1:${PORT}`);
   logger.info(`API credentials: ${LOGIN_TOKEN ? 'configured' : 'MISSING – set DEXTRADE_LOGIN_TOKEN and DEXTRADE_SECRET in bot/.env'}`);
   logger.info(`Strategies available: constantProduct, grid, spreadMaker`);
+
+  // Keep status snapshot fresh for UI even before trading is started.
+  prefetchSnapshotWhenStopped().catch((e) => {
+    logger.warn(`Initial idle prefetch failed: ${e.message}`);
+  });
+  idlePrefetchTimer = setInterval(prefetchSnapshotWhenStopped, IDLE_PREFETCH_INTERVAL_MS);
 });
 
 server.on('error', (e) => {
@@ -319,6 +354,10 @@ server.on('error', (e) => {
 
 async function gracefulShutdown(signal) {
   logger.info(`${signal} received, shutting down…`);
+  if (idlePrefetchTimer) {
+    clearInterval(idlePrefetchTimer);
+    idlePrefetchTimer = null;
+  }
   if (running) {
     try {
       await botController.stop(true);

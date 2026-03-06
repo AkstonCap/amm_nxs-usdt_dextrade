@@ -130,7 +130,7 @@ class DexTradeClient {
       pair:       PAIR,
       type:       side === 'buy' ? 0 : 1,  // 0 = Buy, 1 = Sell
       type_trade: 0,                         // 0 = Limit order
-      rate:       price.toFixed(8),
+      rate:       price.toFixed(4),
       volume:     volume.toFixed(4),
       request_id: String(Date.now()),
     };
